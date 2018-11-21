@@ -37,7 +37,7 @@ $ cd hello-pcf
   - `RestController` アノテーションの追加
   - `GetMapping` アノテーションを持つ処理の追加
 
-<details><summary>編集済みソースコード</sammary>
+<details><summary>編集済みソースコード</summary>
 
 ```java
 package com.example.hellopcf;
