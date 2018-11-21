@@ -38,7 +38,8 @@ $ cd hello-pcf
   - `GetMapping` アノテーションを持つ処理の追加
 
 <details><summary>編集済みソースコード</sammary>
-```
+
+```java
 package com.example.hellopcf;
 
 import org.springframework.boot.SpringApplication;
