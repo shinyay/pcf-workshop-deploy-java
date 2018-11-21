@@ -339,5 +339,322 @@ syanagihara@pivotal.io として組織 syanagihara-org / スペース developmen
 OK
 ```
 
-## まとめ / 振り返り
+### Buildpack
+Cloud Foundry では、`cf push` でアプリケーションをアップロードした後、ステージングとよばれるフェーズでランタイム(JREやサーバーなど)を追加し実行可能な **Droplet** という形式を作成します。
+Droplet を作るための **Buildpack** とよばれる仕組みが使われます。
 
+アップロードしたファイル群(アーティファクト)から自動で適用すべき Buildpack が判断され、Cloud Foundryに他言語対応はここで行われています。
+
+前の手順の中で `cf push` を行った際の実行ログの中で Buildpack をダウンロードし、Droplet を作成している事が確認できます。
+
+```
+:
+:
+   Downloading dotnet_core_buildpack_beta...
+   Downloading dotnet_core_buildpack...
+   Downloading java_buildpack...
+   Downloading python_buildpack...
+:
+:
+   Downloaded app package (15.3M)
+   -----> Java Buildpack v4.16.1 (offline) | https://github.com/cloudfoundry/java-buildpack.git#41b8ff8
+   -----> Downloading Jvmkill Agent 1.16.0_RELEASE from https://java-buildpack.cloudfoundry.org/jvmkill/trusty/x86_64/jvmkill-1.16.0_RELEASE.so (found in cache)
+   -----> Downloading Open Jdk JRE 1.8.0_192 from https://java-buildpack.cloudfoundry.org/openjdk/trusty/x86_64/openjdk-1.8.0_192.tar.gz (found in cache)
+          Expanding Open Jdk JRE to .java-buildpack/open_jdk_jre (1.0s)
+:
+:
+   Uploading droplet, build artifacts cache...
+   Uploading droplet...
+   Uploading build artifacts cache...
+   Uploaded build artifacts cache (131B)
+   Uploaded droplet (62.1M)
+:
+:
+```
+
+デフォルトでは、cf pushでアーティファクトをアップロードした後、利用可能なBuildpackを全てダウンロードし、優先順(position順)にチェックし、対象のBuildpackを特定しDroplet(実行可能な形式)を作成します。
+
+今回の場合は、jarファイルからjava_buildpackが検知され、かつjarの内部にlib/spring-boot-.*.jarが存在することからSpring Boot用のDropletが作成されます
+
+#### Buildpack の指定
+Buildpackは `-b` で明示的に指定できます。
+明示することで自動検出のための時間を短縮できます。
+
+`$ cf buildpacks` コマンドで 利用可能な Buildpack の一覧を表示できます。
+
+<details><summary>実行結果</summary>
+
+```
+$ cf buildpacks
+ビルドパックを取得しています...
+
+buildpack                    位置   有効   ロック済み   ファイル名                                                   stack
+staticfile_buildpack         1      true   false        staticfile_buildpack-cached-cflinuxfs3-v1.4.35.zip           cflinuxfs3
+java_buildpack               2      true   false        java-buildpack-offline-cflinuxfs3-v4.16.1.zip                cflinuxfs3
+ruby_buildpack               3      true   false        ruby_buildpack-cached-cflinuxfs3-v1.7.27.zip                 cflinuxfs3
+dotnet_core_buildpack        4      true   false        dotnet-core_buildpack-cached-cflinuxfs3-v2.2.0.zip           cflinuxfs3
+nodejs_buildpack             5      true   false        nodejs_buildpack-cached-cflinuxfs3-v1.6.34.zip               cflinuxfs3
+go_buildpack                 6      true   false        go_buildpack-cached-cflinuxfs3-v1.8.29.zip                   cflinuxfs3
+python_buildpack             7      true   false        python_buildpack-cached-cflinuxfs3-v1.6.23.zip               cflinuxfs3
+php_buildpack                8      true   false        php_buildpack-cached-cflinuxfs3-v4.3.64.zip                  cflinuxfs3
+binary_buildpack             9      true   false        binary_buildpack-cached-cflinuxfs3-v1.0.27+1537471125.zip    cflinuxfs3
+staticfile_buildpack         10     true   false        staticfile_buildpack-cached-cflinuxfs2-v1.4.35.zip           cflinuxfs2
+java_buildpack               11     true   false        java-buildpack-offline-cflinuxfs2-v4.16.1.zip                cflinuxfs2
+ruby_buildpack               12     true   false        ruby_buildpack-cached-cflinuxfs2-v1.7.27.zip                 cflinuxfs2
+dotnet_core_buildpack        13     true   false        dotnet-core_buildpack-cached-cflinuxfs2-v2.2.0.zip           cflinuxfs2
+nodejs_buildpack             14     true   false        nodejs_buildpack-cached-cflinuxfs2-v1.6.34.zip               cflinuxfs2
+go_buildpack                 15     true   false        go_buildpack-cached-cflinuxfs2-v1.8.29.zip                   cflinuxfs2
+python_buildpack             16     true   false        python_buildpack-cached-cflinuxfs2-v1.6.23.zip               cflinuxfs2
+php_buildpack                17     true   false        php_buildpack-cached-cflinuxfs2-v4.3.64.zip                  cflinuxfs2
+binary_buildpack             18     true   false        binary_buildpack-cached-cflinuxfs2-v1.0.27+1537471124.zip    cflinuxfs2
+dotnet_core_buildpack_beta   19     true   false        dotnet-core_buildpack-cached-v1.0.0.zip
+hwc_buildpack                20     true   false        hwc_buildpack-cached-windows2016-v3.1.0.zip                  windows2016
+binary_buildpack             21     true   false        binary_buildpack-cached-windows2016-v1.0.27+1537471123.zip   windows2016
+```
+</details>
+
+次に、**java_buildpack** を指定して `cf push` を行います。
+コマンドオプションに `-b java_buildpack` をつけて実行します。
+
+```
+$ cf push hello-pcf -b java_buildpack -p build/libs/hello-pcf-0.0.1-SNAPSHOT.jar --random-route
+```
+
+<details><summary>実行結果</summary>
+
+```
+syanagihara@pivotal.io としてアプリ hello-pcf を組織 syanagihara-org / スペース development にプッシュしています...
+アプリ情報を取得しています...
+これらの属性でアプリを作成しています...
++ 名前:           hello-pcf
+  パス:           /Users/shinyay/workspace/workshop/pcf-workshop-deploy-java/build/libs/hello-pcf-0.0.1-SNAPSHOT.jar
+  ビルドパック:
++   java_buildpack
+  経路:
++   hello-pcf-nice-waterbuck.cfapps.io
+
+アプリ hello-pcf を作成しています...
+経路をマップしています...
+ローカル・ファイルをリモート・キャッシュと比較しています...
+Packaging files to upload...
+ファイルをアップロードしています...
+ 251.61 KiB / 251.61 KiB [==========================================================================================================================================================================================================================================] 100.00% 1s
+
+API がファイルの処理を完了するのを待機しています...
+
+アプリをステージングし、ログをトレースしています...
+   Downloading java_buildpack...
+   Downloaded java_buildpack
+   Cell 6c217cab-89ab-4c12-8510-9781bb755a49 creating container for instance 310d74c8-55ed-4ee6-820d-0b3fb8d5f445
+   Cell 6c217cab-89ab-4c12-8510-9781bb755a49 successfully created container for instance 310d74c8-55ed-4ee6-820d-0b3fb8d5f445
+   Downloading app package...
+   Downloaded app package (15.3M)
+   -----> Java Buildpack v4.16.1 (offline) | https://github.com/cloudfoundry/java-buildpack.git#41b8ff8
+   -----> Downloading Jvmkill Agent 1.16.0_RELEASE from https://java-buildpack.cloudfoundry.org/jvmkill/trusty/x86_64/jvmkill-1.16.0_RELEASE.so (found in cache)
+   -----> Downloading Open Jdk JRE 1.8.0_192 from https://java-buildpack.cloudfoundry.org/openjdk/trusty/x86_64/openjdk-1.8.0_192.tar.gz (found in cache)
+          Expanding Open Jdk JRE to .java-buildpack/open_jdk_jre (1.0s)
+          JVM DNS caching disabled in lieu of BOSH DNS caching
+   -----> Downloading Open JDK Like Memory Calculator 3.13.0_RELEASE from https://java-buildpack.cloudfoundry.org/memory-calculator/trusty/x86_64/memory-calculator-3.13.0_RELEASE.tar.gz (found in cache)
+          Loaded Classes: 13694, Threads: 250
+   -----> Downloading Client Certificate Mapper 1.8.0_RELEASE from https://java-buildpack.cloudfoundry.org/client-certificate-mapper/client-certificate-mapper-1.8.0_RELEASE.jar (found in cache)
+   -----> Downloading Container Security Provider 1.16.0_RELEASE from https://java-buildpack.cloudfoundry.org/container-security-provider/container-security-provider-1.16.0_RELEASE.jar (found in cache)
+   -----> Downloading Spring Auto Reconfiguration 2.5.0_RELEASE from https://java-buildpack.cloudfoundry.org/auto-reconfiguration/auto-reconfiguration-2.5.0_RELEASE.jar (found in cache)
+   Exit status 0
+   Uploading droplet, build artifacts cache...
+   Uploading build artifacts cache...
+   Uploading droplet...
+   Uploaded build artifacts cache (129B)
+   Uploaded droplet (62.1M)
+
+アプリが開始するのを待機しています...
+   Uploading complete
+   Cell 6c217cab-89ab-4c12-8510-9781bb755a49 stopping instance 310d74c8-55ed-4ee6-820d-0b3fb8d5f445
+
+名前:                   hello-pcf
+要求された状態:         started
+経路:                   hello-pcf-nice-waterbuck.cfapps.io
+最終アップロード日時:   Wed 21 Nov 20:28:08 JST 2018
+スタック:               cflinuxfs2
+ビルドパック:           java_buildpack
+
+タイプ:           web
+インスタンス:     1/1
+メモリー使用量:   1024M
+開始コマンド:     JAVA_OPTS="-agentpath:$PWD/.java-buildpack/open_jdk_jre/bin/jvmkill-1.16.0_RELEASE=printHeapHistogram=1 -Djava.io.tmpdir=$TMPDIR -Djava.ext.dirs=$PWD/.java-buildpack/container_security_provider:$PWD/.java-buildpack/open_jdk_jre/lib/ext
+                  -Djava.security.properties=$PWD/.java-buildpack/java_security/java.security $JAVA_OPTS" && CALCULATED_MEMORY=$($PWD/.java-buildpack/open_jdk_jre/bin/java-buildpack-memory-calculator-3.13.0_RELEASE -totMemory=$MEMORY_LIMIT -loadedClasses=14472
+                  -poolType=metaspace -stackThreads=250 -vmOptions="$JAVA_OPTS") && echo JVM Memory Configuration: $CALCULATED_MEMORY && JAVA_OPTS="$JAVA_OPTS $CALCULATED_MEMORY" && MALLOC_ARENA_MAX=2 SERVER_PORT=$PORT eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java
+                  $JAVA_OPTS -cp $PWD/. org.springframework.boot.loader.JarLauncher
+     状態   開始日時               cpu      メモリー           ディスク           詳細
+#0   実行   2018-11-21T11:28:33Z   105.7%   1G の中の 136.4M   1G の中の 142.8M
+
+```
+
+実行ログからも分かるように、java_buildpack しかダウンロードしていないのでデプロイに要する時間を短縮する事ができます。
+
+### Spring Actuator
+Spring Actuator とは、アクチュエーターエンドポイントとして定義されている URI にアクセスする事でシステムの状態やメトリクスを確認する事ができる仕組みです。
+
+Spring Boot 1.x 系と 2.x系では、このアクチュエーターの利用方法が異なります。ここでは 2.x系を前提としています。
+
+デフォルトでは、アクセスできるアクチュエーターエンドポイントは、**info** と **health** のみです。
+
+以下のURLにアクセスする事で health 情報を確認できます。
+
+- https://<アプリケーション名>-xxxxx.cfapps.io/actuator/health
+
+以下のように `UP` と表示される事が確認できます。
+
+```
+{"status":"UP"}
+```
+
+次に、別のアクチュエーターエンドポイントで環境変数を表示する **env** があります。
+
+- https://<アプリケーション名>-xxxxx.cfapps.io/actuator/health
+
+しかし、こちらはデフォルトではアクセスできません。
+このアクチュエーターエンドポイントを有効化する必要があります。
+
+以下のコマンドを実行し有効化する環境変数を追加します。追加後に再起動を行います。
+```
+$ cf set-env hello-pcf management.endpoints.web.exposure.include env
+```
+```
+  syanagihara@pivotal.io として組織 syanagihara-org / スペース development 内のアプリ hello-pcf の環境変数 'management.endpoints.web.exposure.include' を 'env' に設定しています...
+  OK
+```
+```
+$ cf restart hello-pcf
+```
+改めて `https://<アプリケーション名>-xxxxx.cfapps.io/actuator/health` にアクセスすると環境変数が表示されるようになった事が確認できます。
+
+#### 1.x系と2.x系の差分概要
+- URLプレフィックスがデフォルトで付与
+  - /actuator/<エンドポイント> のように `actuator` がデフォルトでパスとして追加
+  - `management.server.servlet.context-path` プロパティでプレフィックスを変更可能
+  - 1.x 系では、URLプレフィックスは不要
+- デフォルトで公開されるアクチュエーターエンドポイント
+  - 2.x 系は `info` と `health` のみ
+  - それ以外は適宜必要に応じて有効化する必要あり
+- デフォルトでセキュリティ保護対象ではない
+  - Spring Boot 1.5 で セキュリティ保護対象のエンドポイントが追加され、ACTUATORロールのユーザーでないとアクセスできなくなりました
+  - セキュリティ保護対象を無効化するには、`management.security.enabled=false` を設定
+  - 2.x系は全てはセキュリティ保護対象ではなくなりデフォルトでエンドポイントを無効化としている
+  
+
+### Manifestファイル を利用したデプロイ ( cf push )
+今までのデプロイ( cf push )では、オプションをつけたり、別途環境変数を設定したりしました。
+
+- `$ cf push hello-pcf -b java_buildpack -p build/libs/hello-pcf-0.0.1-SNAPSHOT.jar --random-route`
+- `$ cf set-env hello-pcf management.endpoints.web.exposure.include env`
+
+このデプロイに必要となったオプション情報を **manifest.yml** として定義します。
+
+```yaml
+
+---
+applications:
+  - name: hello-pcf
+    path: build/libs/hello-pcf-0.0.1-SNAPSHOT.jar
+    buildpack: java_buildpack
+    random-route: true
+    env:
+      management.endpoints.web.exposure.include: env
+```
+
+プロジェクトのルート階層にいる事を確認し、上記の manifest.yml を作成します。
+このManifestファイルがあれば実行コマンドは `cf push` だけとなります。
+
+#### cf push 実行
+デプロイ済みの hellp-pcf がある場合、削除します。
+```
+$ cf delete hello-pcf
+```
+
+cf push でデプロイします。
+
+```
+$ cf push
+```
+
+<details><summary>実行結果</summary>
+
+```
+syanagihara@pivotal.io としてマニフェストから組織 syanagihara-org / スペース development にプッシュしています...
+マニフェスト・ファイル /Users/shinyay/workspace/workshop/pcf-workshop-deploy-java/manifest.yml を使用しています
+Deprecation warning: Use of 'buildpack' attribute in manifest is deprecated in favor of 'buildpacks'. Please see http://docs.cloudfoundry.org/devguide/deploy-apps/manifest.html#deprecated for alternatives and other app manifest deprecations. This feature will be removed in the future.
+
+アプリ情報を取得しています...
+これらの属性でアプリを作成しています...
++ 名前:           hello-pcf
+  パス:           /Users/shinyay/workspace/workshop/pcf-workshop-deploy-java/build/libs/hello-pcf-0.0.1-SNAPSHOT.jar
+  ビルドパック:
++   java_buildpack
+  環境:
++   management.endpoints.web.exposure.include
+  経路:
++   hello-pcf-wacky-fossa.cfapps.io
+
+アプリ hello-pcf を作成しています...
+経路をマップしています...
+ローカル・ファイルをリモート・キャッシュと比較しています...
+Packaging files to upload...
+ファイルをアップロードしています...
+ 251.61 KiB / 251.61 KiB [==========================================================================================================================================================================================================================================] 100.00% 1s
+
+API がファイルの処理を完了するのを待機しています...
+
+アプリをステージングし、ログをトレースしています...
+   Downloading java_buildpack...
+   Downloaded java_buildpack
+   Cell a827573d-ee33-414e-bebd-3532a9afb61e creating container for instance 9951c346-baa4-4125-a859-7a24394344dc
+   Cell a827573d-ee33-414e-bebd-3532a9afb61e successfully created container for instance 9951c346-baa4-4125-a859-7a24394344dc
+   Downloading app package...
+   Downloaded app package (15.3M)
+   -----> Java Buildpack v4.16.1 (offline) | https://github.com/cloudfoundry/java-buildpack.git#41b8ff8
+   -----> Downloading Jvmkill Agent 1.16.0_RELEASE from https://java-buildpack.cloudfoundry.org/jvmkill/trusty/x86_64/jvmkill-1.16.0_RELEASE.so (found in cache)
+   -----> Downloading Open Jdk JRE 1.8.0_192 from https://java-buildpack.cloudfoundry.org/openjdk/trusty/x86_64/openjdk-1.8.0_192.tar.gz (found in cache)
+          Expanding Open Jdk JRE to .java-buildpack/open_jdk_jre (1.1s)
+          JVM DNS caching disabled in lieu of BOSH DNS caching
+   -----> Downloading Open JDK Like Memory Calculator 3.13.0_RELEASE from https://java-buildpack.cloudfoundry.org/memory-calculator/trusty/x86_64/memory-calculator-3.13.0_RELEASE.tar.gz (found in cache)
+          Loaded Classes: 13694, Threads: 250
+   -----> Downloading Client Certificate Mapper 1.8.0_RELEASE from https://java-buildpack.cloudfoundry.org/client-certificate-mapper/client-certificate-mapper-1.8.0_RELEASE.jar (found in cache)
+   -----> Downloading Container Security Provider 1.16.0_RELEASE from https://java-buildpack.cloudfoundry.org/container-security-provider/container-security-provider-1.16.0_RELEASE.jar (found in cache)
+   -----> Downloading Spring Auto Reconfiguration 2.5.0_RELEASE from https://java-buildpack.cloudfoundry.org/auto-reconfiguration/auto-reconfiguration-2.5.0_RELEASE.jar (found in cache)
+   Exit status 0
+   Uploading droplet, build artifacts cache...
+   Uploading droplet...
+   Uploading build artifacts cache...
+   Uploaded build artifacts cache (132B)
+   Uploaded droplet (62.1M)
+   Uploading complete
+   Cell a827573d-ee33-414e-bebd-3532a9afb61e stopping instance 9951c346-baa4-4125-a859-7a24394344dc
+   Cell a827573d-ee33-414e-bebd-3532a9afb61e destroying container for instance 9951c346-baa4-4125-a859-7a24394344dc
+   Cell a827573d-ee33-414e-bebd-3532a9afb61e successfully destroyed container for instance 9951c346-baa4-4125-a859-7a24394344dc
+
+アプリが開始するのを待機しています...
+
+名前:                   hello-pcf
+要求された状態:         started
+経路:                   hello-pcf-wacky-fossa.cfapps.io
+最終アップロード日時:   Wed 21 Nov 21:30:14 JST 2018
+スタック:               cflinuxfs2
+ビルドパック:           java_buildpack
+
+タイプ:           web
+インスタンス:     1/1
+メモリー使用量:   1024M
+開始コマンド:     JAVA_OPTS="-agentpath:$PWD/.java-buildpack/open_jdk_jre/bin/jvmkill-1.16.0_RELEASE=printHeapHistogram=1 -Djava.io.tmpdir=$TMPDIR -Djava.ext.dirs=$PWD/.java-buildpack/container_security_provider:$PWD/.java-buildpack/open_jdk_jre/lib/ext
+                  -Djava.security.properties=$PWD/.java-buildpack/java_security/java.security $JAVA_OPTS" && CALCULATED_MEMORY=$($PWD/.java-buildpack/open_jdk_jre/bin/java-buildpack-memory-calculator-3.13.0_RELEASE -totMemory=$MEMORY_LIMIT -loadedClasses=14472
+                  -poolType=metaspace -stackThreads=250 -vmOptions="$JAVA_OPTS") && echo JVM Memory Configuration: $CALCULATED_MEMORY && JAVA_OPTS="$JAVA_OPTS $CALCULATED_MEMORY" && MALLOC_ARENA_MAX=2 SERVER_PORT=$PORT eval exec $PWD/.java-buildpack/open_jdk_jre/bin/java
+                  $JAVA_OPTS -cp $PWD/. org.springframework.boot.loader.JarLauncher
+     状態   開始日時               cpu    メモリー           ディスク           詳細
+#0   実行   2018-11-21T12:30:29Z   0.0%   1G の中の 151.9M   1G の中の 142.8M
+
+```
+</detais>
+
+## まとめ / 振り返り
+Spring Boot アプリケーションを Pivotal Cloud Foundry にデプロイ (**cf push**) する一連の手順を確認しました。
+
+１つのコマンド `cf push` のみで作業が完結するシンプルさが理解できたのではないでしょうか。
