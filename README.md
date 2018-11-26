@@ -115,6 +115,12 @@ $ java -jar build/libs/hello-pcf-0.0.1-SNAPSHOT.jar
 
 ![local access](images/access-local.png)
 
+### Pivotal Cloud Foundry にログイン
+
+```
+$ cf login -a api.run.pivotal.io
+```
+
 ### アプリケーションを Pivotal Cloud Foundry にデプロイ (push)
 以下のコマンドでビルドした Spring Boot アプリケーション を Pivotal Cloud Foundry にデプロイします。
 
