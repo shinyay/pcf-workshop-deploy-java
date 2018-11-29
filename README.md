@@ -10,7 +10,7 @@ Java のアプリケーションは、[Spring Boot](http://projects.spring.io/sp
 また、デプロイする時に使用される Buildpack についても見てみます。
 
 ## 前提 / 環境
-- [事前作業](https://github.com/shinyay/pcf-workshop-prerequisite/blob/master/README.md) 実施済み
+- [事前作業](https://github.com/shinyay/pcf-workshop-prerequisite/blob/master/README.md)
 
 ## 手順 / 解説
 ### プロジェクトの作成
