@@ -115,6 +115,12 @@ $ java -jar build/libs/hello-pcf-0.0.1-SNAPSHOT.jar
 
 ![local access](images/access-local.png)
 
+### Pivotal Cloud Foundry にログイン
+
+```
+$ cf login -a api.run.pivotal.io
+```
+
 ### アプリケーションを Pivotal Cloud Foundry にデプロイ (push)
 以下のコマンドでビルドした Spring Boot アプリケーション を Pivotal Cloud Foundry にデプロイします。
 
@@ -488,6 +494,7 @@ API がファイルの処理を完了するのを待機しています...
 #0   実行   2018-11-21T11:28:33Z   105.7%   1G の中の 136.4M   1G の中の 142.8M
 
 ```
+</details>
 
 実行ログからも分かるように、java_buildpack しかダウンロードしていないのでデプロイに要する時間を短縮する事ができます。
 
@@ -652,7 +659,7 @@ API がファイルの処理を完了するのを待機しています...
 #0   実行   2018-11-21T12:30:29Z   0.0%   1G の中の 151.9M   1G の中の 142.8M
 
 ```
-</detais>
+</details>
 
 ## まとめ / 振り返り
 Spring Boot アプリケーションを Pivotal Cloud Foundry にデプロイ (**cf push**) する一連の手順を確認しました。
