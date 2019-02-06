@@ -661,6 +661,30 @@ API がファイルの処理を完了するのを待機しています...
 ```
 </details>
 
+### JDK11によるビルド & cf push
+
+```
+$ docker run --rm -v "$PWD":/home/gradle/project \
+                  -w /home/gradle/project \
+                  gradle:5.1.1-jdk11 \
+                  gradle clean build
+```
+
+以下の `manifest` 定義を使用
+
+```
+---
+applications:
+  - name: hello-pcf
+    path: build/libs/hello-pcf-0.0.1-SNAPSHOT.jar
+    buildpack: https://github.com/cloudfoundry/java-buildpack
+    random-route: true
+    env:
+      management.endpoints.web.exposure.include: env
+      JBP_CONFIG_OPEN_JDK_JRE: '{ jre: { version: 11.+}}'
+
+```
+
 ## まとめ / 振り返り
 Spring Boot アプリケーションを Pivotal Cloud Foundry にデプロイ (**cf push**) する一連の手順を確認しました。
 
